@@ -68,7 +68,7 @@ size_t sumup_dir(const string &dir)
 
         if (S_ISDIR(st.st_mode)) {
             res += sumup_dir(tdir + ent->d_name);
-        } else if (S_ISREG(st.st_mode)) {
+        } else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
             res += st.st_size;
         }
 
