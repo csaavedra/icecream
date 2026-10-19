@@ -667,8 +667,15 @@ error_client(MsgChannel *client, string error)
 
 void chdir_to_environment(MsgChannel *client, const string &dirname, uid_t user_uid, gid_t user_gid)
 {
-#ifdef HAVE_LIBCAP_NG
+#ifndef HAVE_LIBCAP_NG
+    if (getuid() != 0) {
+        error_client(client, "cannot chroot to environment");
+        _exit(146);
+    }
+#endif
 
+    // without the chdir, the chroot will escape the
+    // jail right away
     if (chdir(dirname.c_str()) < 0) {
         error_client(client, string("chdir to ") + dirname + "failed");
         log_perror("chdir() failed") << "\t" << dirname << endl;
@@ -681,47 +688,27 @@ void chdir_to_environment(MsgChannel *client, const string &dirname, uid_t user_
         _exit(144);
     }
 
+#ifdef HAVE_LIBCAP_NG
     (void) user_uid;
     (void) user_gid;
 #else
-
-    if (getuid() == 0) {
-        // without the chdir, the chroot will escape the
-        // jail right away
-        if (chdir(dirname.c_str()) < 0) {
-            error_client(client, string("chdir to ") + dirname + "failed");
-            log_perror("chdir() failed") << "\t" << dirname << endl;
-            _exit(145);
-        }
-
-        if (chroot(dirname.c_str()) < 0) {
-            error_client(client, string("chroot ") + dirname + "failed");
-            log_perror("chroot() failed") << "\t" << dirname << endl;
-            _exit(144);
-        }
-
-        if (setgroups(0, NULL) < 0) {
-            error_client(client, string("setgroups failed"));
-            log_perror("setgroups() failed");
-            _exit(143);
-        }
-
-        if (setgid(user_gid) < 0) {
-            error_client(client, string("setgid failed"));
-            log_perror("setgid() failed");
-            _exit(143);
-        }
-
-        if (setuid(user_uid) < 0) {
-            error_client(client, string("setuid failed"));
-            log_perror("setuid() failed");
-            _exit(142);
-        }
-    } else {
-        error_client(client, "cannot chroot to environment");
-        _exit(146);
+    if (setgroups(0, NULL) < 0) {
+        error_client(client, string("setgroups failed"));
+        log_perror("setgroups() failed");
+        _exit(143);
     }
 
+    if (setgid(user_gid) < 0) {
+        error_client(client, string("setgid failed"));
+        log_perror("setgid() failed");
+        _exit(143);
+    }
+
+    if (setuid(user_uid) < 0) {
+        error_client(client, string("setuid failed"));
+        log_perror("setuid() failed");
+        _exit(142);
+    }
 #endif
 }
 
