@@ -483,19 +483,21 @@ pid_t start_install_environment(const std::string &basename, const std::string &
     // else
 #ifndef HAVE_LIBCAP_NG
 
-    if (setgroups(0, NULL) < 0) {
-        log_perror("setgroups fails");
-        _exit(143);
-    }
+    if (!geteuid()) {
+        if (setgroups(0, NULL) < 0) {
+            log_perror("setgroups fails");
+            _exit(143);
+        }
 
-    if (setgid(user_gid) < 0) {
-        log_perror("setgid fails");
-        _exit(143);
-    }
+        if (setgid(user_gid) < 0) {
+            log_perror("setgid fails");
+            _exit(143);
+        }
 
-    if (!geteuid() && setuid(user_uid) < 0) {
-        log_perror("setuid fails");
-        _exit(142);
+        if (setuid(user_uid) < 0) {
+            log_perror("setuid fails");
+            _exit(142);
+        }
     }
 
 #endif
